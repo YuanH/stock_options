@@ -3,6 +3,11 @@
 ## Prerequisites
 
 `pip install yfinance`
+`pip install pandas`
+
+## How to run this
+
+Example code is in `option_chain.py`. Nothing fancy at the moment.
 
 ## To Dos
 
