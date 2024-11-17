@@ -6,4 +6,6 @@
 
 ## To Dos
 
-1. multiple output file formats (.csv, .txt etc.)
+1. Multiple output file formats (.csv, .txt etc.)
+2. Integration with Google Sheets APIs
+3. Include Naked Calls and Naked Puts (Personally, I don't like using margins)
