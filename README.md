@@ -11,9 +11,10 @@ Example code is in `option_chain.py`. Nothing fancy at the moment.
 
 ## To Dos
 
-1. Multiple output file formats (.csv, .txt etc.)
-2. Integration with Google Sheets APIs
-3. Include Naked Calls and Naked Puts (Personally, I don't like using margins)
+1. Add a downside protection column to the table (distance of current strike price +/- premium to current price)
+2. Multiple output file formats (.csv, .txt etc.)
+3. Integration with Google Sheets APIs
+4. Include Naked Calls and Naked Puts (Personally, I don't like using margins)
 
 ## References
 
