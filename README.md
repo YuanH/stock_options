@@ -14,3 +14,7 @@ Example code is in `option_chain.py`. Nothing fancy at the moment.
 1. Multiple output file formats (.csv, .txt etc.)
 2. Integration with Google Sheets APIs
 3. Include Naked Calls and Naked Puts (Personally, I don't like using margins)
+
+## References
+
+[How to Calculate Annualized Returns on Option Trades](https://www.great-option-trading-strategies.com/how-to-calculate-annualized-returns.html)
