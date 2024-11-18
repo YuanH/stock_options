@@ -44,22 +44,29 @@ def calculate_annualized_return(option_data: pd.DataFrame, stock_price: float, d
         # For cash secured puts, capital reserved = (strike price - premium) * 100 * Quantity
         # Return = premium collected / capital reserved
         option_data['Annualized Return'] = option_data['bid'] / (option_data['strike'] - option_data['bid']) * 365 / days_to_expiration * 100
+        option_data['Distance Perc'] = (stock_price - option_data['bid'] - option_data['strike']) / stock_price
     elif type == 'calls':
         # For covered calls, return = premium collected / current stock price
         option_data["Annualized Return"] = option_data['bid'] / stock_price * 365 / days_to_expiration * 100
-
+        option_data['Distance Perc'] = (option_data['strike'] + option_data['bid'] - stock_price) / stock_price * 100
     # Replace infinite or NaN values (e.g., for options with zero intrinsic value)
     option_data['Annualized Return'].replace([float('inf'), -float('inf')], 0, inplace=True)
     option_data['Annualized Return'].fillna(0, inplace=True)
 
+
     return option_data
 
-def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str) -> None:
+def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, return_filter: bool = False, in_the_money: bool = False) -> None:
     """
     Fetch option chain data and calculate annualized returns for each put/call option.
 
     :param ticker_symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA').
     """
+
+    # Default Params
+    calls_threshold: float = 7.0
+    puts_threshold: float = 15
+
     # Fetch the stock data
     stock = yf.Ticker(ticker_symbol)
     stock_price = stock.info['currentPrice']
@@ -78,9 +85,19 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str) -> 
         # Process call and put options
         calls = calculate_annualized_return(option_chain.calls, stock_price, days_to_expiration, "calls")
         calls.name = "Calls"
+        if return_filter:
+            calls = calls[calls["Annualized Return"] > calls_threshold]
+        if not in_the_money:
+            calls = calls[calls["inTheMoney"] == False]
+
 
         puts = calculate_annualized_return(option_chain.puts, stock_price, days_to_expiration, "puts")
         puts.name = "Puts"
+        if return_filter:
+            puts = puts[puts["Annualized Return"] > puts_threshold]
+        if not in_the_money:
+            puts = puts[puts["inTheMoney"] == False]
+
 
         file_handle.write(f"\n--- Ticker: {ticker_symbol} ---\n")
         file_handle.write(f"Stock Price: {stock_price}\n")
@@ -96,8 +113,9 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str) -> 
 
 if __name__ == "__main__":
     # Example usage
-    tickers = ["SOC", "AMR", "OXY", "TPH", "PHM", "AN"]
-    output_file = "option_returns.txt"
-    with open(output_file, "w") as file:
-        for ticker in tickers:
-            fetch_and_calculate_option_returns(ticker, file)
+    tickers = ["GOOG", "EBAY", "ABG", "LAD", "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "SOC", "OXY"]
+
+    for ticker in tickers:
+        output_file = f"{ticker}_option_returns.txt"
+        with open(output_file, "w") as file:
+            fetch_and_calculate_option_returns(ticker, file, return_filter=True, in_the_money=False)
