@@ -113,7 +113,7 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, ret
 
 if __name__ == "__main__":
     # Example usage
-    tickers = ["GOOG", "EBAY", "ABG", "LAD", "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "SOC", "OXY"]
+    tickers = ["EBAY", "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "SOC", "OXY", "GOOG"]
 
     for ticker in tickers:
         output_file = f"{ticker}_option_returns.txt"
