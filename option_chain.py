@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List, Tuple
 import yfinance as yf
 import pandas as pd
 
@@ -56,7 +57,7 @@ def calculate_annualized_return(option_data: pd.DataFrame, stock_price: float, d
 
     return option_data
 
-def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, return_filter: bool = False, in_the_money: bool = False) -> None:
+def fetch_and_calculate_option_returns(ticker_symbol: str, return_filter: bool = False, in_the_money: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Fetch option chain data and calculate annualized returns for each put/call option.
 
@@ -76,6 +77,10 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, ret
         print(f"No options data available for {ticker_symbol}.")
         return
 
+    all_calls: List[pd.DataFrame] = []
+    all_puts: List[pd.DataFrame] = []
+
+
     # Fetch data for the first expiration date as an example
     for date in expiration_dates:
         print(f"{ticker_symbol}: Fetching data for expiration date: {date}")
@@ -87,9 +92,12 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, ret
         calls.name = "Calls"
         if return_filter:
             calls = calls[calls["Annualized Return"] > calls_threshold]
+            
         if not in_the_money:
             calls = calls[calls["inTheMoney"] == False]
-
+        calls["Expiration Date"] = date
+        calls["Stock Price"] = stock_price
+        all_calls.append(calls)
 
         puts = calculate_annualized_return(option_chain.puts, stock_price, days_to_expiration, "puts")
         puts.name = "Puts"
@@ -97,25 +105,59 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, file_handle: str, ret
             puts = puts[puts["Annualized Return"] > puts_threshold]
         if not in_the_money:
             puts = puts[puts["inTheMoney"] == False]
+        puts["Expiration Date"] = date
+        puts["Stock Price"] = stock_price
+        all_puts.append(puts)
+        
+    # Combine all expiration dates into single tables
+    combined_calls: pd.DataFrame = pd.concat(all_calls, ignore_index=True)
+    combined_puts: pd.DataFrame = pd.concat(all_puts, ignore_index=True)
 
+    return combined_puts, combined_calls
 
-        file_handle.write(f"\n--- Ticker: {ticker_symbol} ---\n")
-        file_handle.write(f"Stock Price: {stock_price}\n")
-        file_handle.write(f"Expiration Date: {date}\n\n")
+def build_pivot_table(data: pd.DataFrame):
+    """
+    Build a pivot table to display both bid price and annualized return together.
+    
+    :param data: DataFrame containing options data with expiration dates, strikes, bid, and annualized returns.
+    :return: Multi-index pivot table.
+    """
+    # Pivot table creation
+    pivot = pd.pivot_table(
+        data,
+        index='strike',  # Rows: Strike Prices
+        columns='Expiration Date',  # Columns: Expiration Dates
+        values=['bid', 'Annualized Return'],  # Values: Bid and Annualized Return
+        aggfunc='mean'  # Aggregation function (e.g., mean if duplicates exist)
+    )
 
-        file_handle.write("Calls with Annualized Returns:\n")
-        file_handle.write(calls.to_string(index=False))
-        file_handle.write("\n\n")
+    pivot = pivot.swaplevel(axis=1).sort_index(axis=1)
+    # pivot = pivot.applymap(lambda x: f"{x:.2f}%" if isinstance(x, float) and 'Annualized Return' in str(x) else f"{x:.2f}")
 
-        file_handle.write("Puts with Annualized Returns:\n")
-        file_handle.write(puts.to_string(index=False))
-        file_handle.write("\n")
+    return pivot
 
 if __name__ == "__main__":
     # Example usage
-    tickers = ["EBAY", "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "SOC", "OXY", "GOOG"]
+    # tickers = ["EBAY", "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "SOC", "OXY", "GOOG"]
+    #tickers = ['EBAY', "PAG", "AN", "HCC", "AMR", "TPH", "PHM", "TOL", "DAC", "OXY", "GOOG"]
+    tickers = ['PDD']
 
     for ticker in tickers:
+        puts, calls = fetch_and_calculate_option_returns(ticker, return_filter=True, in_the_money=False)
         output_file = f"{ticker}_option_returns.txt"
         with open(output_file, "w") as file:
-            fetch_and_calculate_option_returns(ticker, file, return_filter=True, in_the_money=False)
+            file.write(f"\n--- Ticker: {ticker} ---\n")
+            
+            file.write("Calls with Annualized Returns:\n")
+            file.write(calls.to_string(index=False))
+            file.write("\n\n")
+
+            file.write("Puts with Annualized Returns:\n")
+            file.write(puts.to_string(index=False))
+            file.write("\n")
+
+        puts_pivot = build_pivot_table(puts)
+        calls_pivot = build_pivot_table(calls)
+
+        puts_pivot.to_csv(f"{ticker}_puts_pivot.csv")
+        calls_pivot.to_csv(f"{ticker}_calls_pivot.csv")
