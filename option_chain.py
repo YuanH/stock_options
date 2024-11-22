@@ -3,32 +3,6 @@ from typing import List, Tuple
 import yfinance as yf
 import pandas as pd
 
-def fetch_option_chain(stock: yf.ticker.Ticker) -> None:
-    """
-    Fetch and display the option chain for a given stock ticker symbol.
-
-    :param ticker_symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA').
-    """
-      
-
-    # Get available expiration dates
-    expiration_dates = stock.options
-    print(f"Available expiration dates for {stock.ticker}: {expiration_dates}")
-    
-    # Fetch option chain data for the first expiration date as an example
-    if expiration_dates:
-        first_date = expiration_dates[0]
-        option_chain = stock.option_chain(first_date)
-        
-        print("\nCalls:")
-        print(option_chain.calls)
-        
-        print("\nPuts:")
-        print(option_chain.puts)
-    else:
-        print(f"No options data available for {stock.ticker}.")
-
-
 def calculate_annualized_return(option_data: pd.DataFrame, stock_price: float, days_to_expiration: int, type: str) -> pd.DataFrame:
     """
     Calculate the annualized return for each option.
@@ -62,11 +36,14 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, return_filter: bool =
     Fetch option chain data and calculate annualized returns for each put/call option.
 
     :param ticker_symbol: Stock ticker symbol (e.g., 'AAPL', 'TSLA').
+    :param return_filter: whether to implement a return filter
+    :param in_the_money: whether to filter based on in the money
+    :return: Two DataFrames, one with puts, one with calls
     """
 
-    # Default Params
+    # Default Params for calls and puts return threshold
     calls_threshold: float = 7.0
-    puts_threshold: float = 15
+    puts_threshold: float = 15.0
 
     # Fetch the stock data
     stock = yf.Ticker(ticker_symbol)
@@ -80,15 +57,14 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, return_filter: bool =
     all_calls: List[pd.DataFrame] = []
     all_puts: List[pd.DataFrame] = []
 
-
     # Fetch data for the first expiration date as an example
     for date in expiration_dates:
         print(f"{ticker_symbol}: Fetching data for expiration date: {date}")
         option_chain = stock.option_chain(date)
-        days_to_expiration = (pd.to_datetime(date) - pd.Timestamp.now()).days
+        days_to_expiration: int = (pd.to_datetime(date) - pd.Timestamp.now()).days
 
         # Process call and put options
-        calls = calculate_annualized_return(option_chain.calls, stock_price, days_to_expiration, "calls")
+        calls: pd.DataFrame = calculate_annualized_return(option_chain.calls, stock_price, days_to_expiration, "calls")
         calls.name = "Calls"
         if return_filter:
             calls = calls[calls["Annualized Return"] > calls_threshold]
@@ -99,7 +75,7 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, return_filter: bool =
         calls["Stock Price"] = stock_price
         all_calls.append(calls)
 
-        puts = calculate_annualized_return(option_chain.puts, stock_price, days_to_expiration, "puts")
+        puts: pd.DataFrame = calculate_annualized_return(option_chain.puts, stock_price, days_to_expiration, "puts")
         puts.name = "Puts"
         if return_filter:
             puts = puts[puts["Annualized Return"] > puts_threshold]
@@ -115,7 +91,7 @@ def fetch_and_calculate_option_returns(ticker_symbol: str, return_filter: bool =
 
     return combined_puts, combined_calls
 
-def build_pivot_table(data: pd.DataFrame):
+def build_pivot_table(data: pd.DataFrame) -> pd.DataFrame:
     """
     Build a pivot table to display both bid price and annualized return together.
     

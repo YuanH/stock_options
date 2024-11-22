@@ -1,6 +1,9 @@
 # ipynb
 *.ipynb*
 
+# .DS_Store
+.DS_Store
+
 # datafiles
 *.txt
 *.csv
